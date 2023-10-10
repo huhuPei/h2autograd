@@ -1,12 +1,14 @@
+import collections
+
 def null_fn(): 
     pass
 
 class Value:
-    def __init__(self, data, parent=(), op=''):
+    def __init__(self, data, parents=(), op=''):
         self.data = data
         self.grad = 0
         self._backward_fn = null_fn
-        self._pre = parent
+        self._prev = set(parents)
         self._op = op
 
     def __add__(self, other):
@@ -34,14 +36,37 @@ class Value:
     def __sub__(self, other): # self - other
         return self + (-other)
 
+    def __neg__(self): # -self
+        return self * -1  
+    
     def __repr__(self):
-        return f"Value(data={self.data}, grad={self.grad})"    
+        return f"Value(data={self.data}, grad={self.grad})"  
 
     def backward(self):
-        pass
+        self.grad = 1
+        bwf = self._gen_back_workflow()
+        print(bwf)
+        for b in bwf:
+            b._backward_fn()
 
-    def _back_workflow(self):
-        pass
+    def _gen_back_workflow(self):
+        nodes = []
+        visited = set([self])
+        stack = collections.deque([self])
+        while stack:
+            top = stack[-1]
+            deeper = False
+            for p in top._prev:
+                if p not in visited:
+                    visited.add(p)
+                    stack.append(p)
+                    deeper = True
+                    break
+            
+            if deeper: continue
+            nodes.append(stack.pop())
+        nodes.reverse()
+        return nodes
 
     def relu(self):
         _relu = lambda d: 0 if d < 0 else d 
@@ -52,9 +77,3 @@ class Value:
 
         out._backward_fn = _backward_relu_fn
         return out
-
-if __name__ == "__main__":
-    b = Value(2)
-    a = Value(-1).relu()
-    c = a + b
-    print(a, b, c)
