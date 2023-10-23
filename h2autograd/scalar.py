@@ -21,6 +21,9 @@ class Value:
         
         out._backward_fn = _backward_add_fn
         return out
+    
+    def __radd__(self, other):
+        return self + other
 
     def __mul__(self, other):
         other = other if isinstance(other, Value) else Value(other) 
@@ -33,8 +36,14 @@ class Value:
         out._backward_fn = _backward_mul_fn
         return out
 
-    def __sub__(self, other): # self - other
+    def __rmul__(self, other):
+        return self * other
+
+    def __sub__(self, other):
         return self + (-other)
+
+    def __rsub__(self, other):
+        return other + (-self)
 
     def __neg__(self): # -self
         return self * -1  
@@ -44,12 +53,12 @@ class Value:
 
     def backward(self):
         self.grad = 1
-        bwf = self._gen_back_workflow()
-        print(bwf)
-        for b in bwf:
+        bts = self._gen_back_topo_seq()
+        print(bts)
+        for b in bts:
             b._backward_fn()
 
-    def _gen_back_workflow(self):
+    def _gen_back_topo_seq(self):
         nodes = []
         visited = set([self])
         stack = collections.deque([self])
